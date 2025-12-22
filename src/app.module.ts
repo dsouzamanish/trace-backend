@@ -6,6 +6,8 @@ import { TeamMemberModule } from './modules/team-member/team-member.module';
 import { BlockerModule } from './modules/blocker/blocker.module';
 import { AiReportModule } from './modules/ai-report/ai-report.module';
 import { MigrationModule } from './modules/migration/migration.module';
+import { SlackModule } from './modules/slack/slack.module';
+import { AppController } from './app.controller';
 
 @Module({
   imports: [
@@ -19,7 +21,9 @@ import { MigrationModule } from './modules/migration/migration.module';
     BlockerModule,
     AiReportModule,
     MigrationModule,
+    SlackModule,
   ],
+  controllers: [AppController],
 })
 export class AppModule {}
 

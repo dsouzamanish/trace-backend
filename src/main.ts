@@ -5,7 +5,10 @@ import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { AppModule } from './app.module';
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
+  const app = await NestFactory.create(AppModule, {
+    // Enable raw body for Slack signature verification
+    rawBody: true,
+  });
 
   const configService = app.get(ConfigService);
 
@@ -37,6 +40,7 @@ async function bootstrap() {
     .addTag('team-members', 'Team member management')
     .addTag('blockers', 'Blocker management')
     .addTag('ai-reports', 'AI-generated insights')
+    .addTag('slack', 'Slack integration endpoints')
     .build();
 
   const document = SwaggerModule.createDocument(app, config);

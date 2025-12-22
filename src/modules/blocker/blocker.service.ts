@@ -159,7 +159,7 @@ export class BlockerService {
     filterDto?: FilterBlockerDto,
   ): Promise<{ blockers: Blocker[]; total: number }> {
     const where: Record<string, unknown> = {
-      'team_member': teamMemberUid,
+      'team_member.uid': teamMemberUid,
     };
 
     if (filterDto?.category) {

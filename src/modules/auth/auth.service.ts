@@ -42,6 +42,8 @@ export class AuthService {
   ) {}
 
   async validateGoogleUser(googleUser: GoogleUser): Promise<AuthResponse> {
+    console.log('googleUser-----', googleUser);
+    
     // Find existing team member by email
     let teamMember = await this.teamMemberService.findByEmail(googleUser.email);
 

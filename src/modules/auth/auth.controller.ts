@@ -43,6 +43,7 @@ export class AuthController {
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Get current user profile' })
   async getProfile(@CurrentUser() user: CurrentUserData) {
+    console.log('user-----', user);
     return user;
   }
 
