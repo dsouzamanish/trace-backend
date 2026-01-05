@@ -9,9 +9,13 @@ export interface ActionItem {
   // Enhanced fields for more specific recommendations
   severity?: BlockerSeverity;
   category?: string;
-  suggestedSolution?: string;
+  blockerRef?: string;              // e.g., "B1", "B2" - reference to the specific blocker
+  blockerDescription?: string;      // The exact blocker this addresses
+  teamToInvolve?: string;           // e.g., "DevOps", "Backend team", "QA team"
+  suggestedSolution?: string;       // Step-by-step solution
+  immediateNextStep?: string;       // The ONE thing to do first
   estimatedEffort?: 'quick-win' | 'short-term' | 'long-term';
-  relatedBlockers?: string[];
+  relatedBlockers?: string[];       // For grouped recommendations
 }
 
 export interface AiReport {

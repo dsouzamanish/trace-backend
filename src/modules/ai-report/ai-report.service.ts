@@ -283,14 +283,26 @@ export class AiReportService {
   }
 
   /**
-   * Format blockers for the AI prompt
+   * Format blockers for the AI prompt with unique IDs for reference
    */
   private formatBlockersForPrompt(
     blockers: Array<{ description: string; category: string; severity: string; status: string }>,
+    startId: number = 1,
   ): string {
     if (blockers.length === 0) return 'None';
     return blockers
-      .map((b, i) => `  ${i + 1}. [${b.category}] ${b.description} (Status: ${b.status})`)
+      .map((b, i) => `  B${startId + i}. [${b.category}] "${b.description}" (Status: ${b.status})`)
+      .join('\n');
+  }
+
+  /**
+   * Format all blockers with sequential IDs for the AI prompt
+   */
+  private formatAllBlockersWithIds(
+    blockers: Array<{ description: string; category: string; severity: string; status: string }>,
+  ): string {
+    return blockers
+      .map((b, i) => `B${i + 1}. [${b.severity}][${b.category}] "${b.description}" (Status: ${b.status})`)
       .join('\n');
   }
 
@@ -319,62 +331,76 @@ export class AiReportService {
 
     const prompt = `You are an expert productivity analyst and engineering manager. Analyze the blockers reported by ${
       reportType === 'individual' ? 'an individual team member' : 'a team'
-    } named "${targetName}" and provide actionable, specific recommendations.
+    } named "${targetName}" and provide SPECIFIC, ACTIONABLE recommendations for EACH blocker.
 
-## BLOCKERS BY SEVERITY
+## ALL BLOCKERS (Total: ${blockers.length}, Open: ${openBlockers.length})
 
-### 🔴 HIGH SEVERITY (${grouped.high.length} blockers) - Immediate attention required
-${this.formatBlockersForPrompt(grouped.high)}
-
-### 🟡 MEDIUM SEVERITY (${grouped.medium.length} blockers) - Should be addressed this sprint
-${this.formatBlockersForPrompt(grouped.medium)}
-
-### 🟢 LOW SEVERITY (${grouped.low.length} blockers) - Can be scheduled for later
-${this.formatBlockersForPrompt(grouped.low)}
+${this.formatAllBlockersWithIds(blockers)}
 
 ## STATISTICS
-- Total Blockers: ${blockers.length}
-- Open Blockers: ${openBlockers.length}
-- Categories Affected: ${categories.join(', ')}
+- High Severity: ${grouped.high.length}
+- Medium Severity: ${grouped.medium.length}
+- Low Severity: ${grouped.low.length}
+- Categories: ${categories.join(', ')}
 
 ## YOUR TASK
 
-Provide a comprehensive analysis with SPECIFIC, ACTIONABLE recommendations for EACH severity level. Each action item should:
-1. Reference the specific blocker(s) it addresses
-2. Provide a concrete solution or approach
-3. Include an estimated effort level (quick-win: <1 day, short-term: 1-5 days, long-term: >5 days)
+For EACH blocker listed above, provide a specific action item with:
+1. The exact blocker ID (B1, B2, etc.) it addresses
+2. A concrete, actionable solution (NOT generic advice)
+3. Which team/person to involve (e.g., "DevOps team", "Backend lead", "QA team", "Product Manager")
+4. Specific next steps
+
+## EXAMPLES OF GOOD vs BAD ACTION ITEMS
+
+❌ BAD (too generic):
+- "Review configuration settings"
+- "Improve communication"
+- "Fix the technical issue"
+
+✅ GOOD (specific and actionable):
+- "For B3 (Config mismatch on dev18): Work with DevOps team to implement centralized config management using Consul or AWS Parameter Store. Schedule a 30-min sync with DevOps lead to review current config deployment process."
+- "For B5 (API timeout): Collaborate with Backend team to add connection pooling and implement retry logic with exponential backoff. Create a Jira ticket for Backend team with reproduction steps."
+- "For B7 (Missing test data): Coordinate with QA team to set up a shared test data repository. Request QA lead to provision staging environment with sample datasets."
 
 Respond in JSON format:
 {
-  "summary": "A 2-3 sentence executive summary of the main productivity challenges and overall health",
+  "summary": "A 2-3 sentence executive summary highlighting the most critical blockers and overall productivity health",
   "actionItems": [
     {
-      "title": "Brief action title",
-      "description": "Detailed description of what to do",
+      "title": "Action title referencing the blocker",
+      "description": "Detailed description starting with 'For B[X] (blocker summary):' followed by the specific action",
       "priority": "high|medium|low",
       "severity": "High|Medium|Low",
-      "category": "category name this addresses",
-      "suggestedSolution": "Specific step-by-step solution or approach to resolve this",
-      "estimatedEffort": "quick-win|short-term|long-term",
-      "relatedBlockers": ["brief description of related blocker 1", "brief description of related blocker 2"]
+      "category": "Technical|Process|Dependency|Infrastructure|Other",
+      "blockerRef": "B1",
+      "blockerDescription": "The exact blocker description this addresses",
+      "teamToInvolve": "Specific team or role (e.g., DevOps, Backend, QA, Product, Manager)",
+      "suggestedSolution": "Step-by-step solution:\n1. First step\n2. Second step\n3. Third step",
+      "immediateNextStep": "The ONE thing to do first (e.g., 'Schedule 15-min call with DevOps lead')",
+      "estimatedEffort": "quick-win|short-term|long-term"
     }
   ],
   "insights": [
-    "Pattern or trend observation 1",
-    "Pattern or trend observation 2",
-    "Recommendation for process improvement"
+    "Pattern observation with specific recommendation",
+    "Cross-team dependency insight",
+    "Process improvement suggestion"
   ]
 }
 
-GUIDELINES:
-- Generate 2-3 action items for HIGH severity blockers (if any exist)
-- Generate 1-2 action items for MEDIUM severity blockers (if any exist)
-- Generate 1 action item for LOW severity blockers (if any exist)
-- Make suggestions specific to the blocker descriptions, not generic advice
-- Include concrete solutions like "Set up daily standup", "Create shared documentation", "Implement code review checklist"
-- For technical blockers, suggest specific tools, processes, or architectural changes
-- For dependency blockers, suggest communication strategies or escalation paths
-- For resource blockers, suggest prioritization frameworks or resource allocation strategies`;
+## GUIDELINES
+
+1. **Generate ONE action item per blocker** - Every blocker should have a corresponding action item
+2. **Be specific to the blocker description** - Read the blocker text carefully and tailor the recommendation
+3. **Include team ownership** - Always specify which team/person should be involved:
+   - Infrastructure/Config issues → DevOps team
+   - Code/API issues → Backend/Frontend team
+   - Testing issues → QA team
+   - Requirements/Specs → Product Manager
+   - External dependencies → relevant external team + escalation path
+   - Process issues → Team Lead or Engineering Manager
+4. **Provide concrete next steps** - Include specific meetings to schedule, tickets to create, or documents to review
+5. **Reference tools and processes** - Suggest specific tools (Jira, Confluence, Slack channels) when relevant`;
 
     try {
       const completion = await this.openai.chat.completions.create({
@@ -409,6 +435,7 @@ GUIDELINES:
 
   /**
    * Generate fallback analysis when AI is unavailable
+   * Creates specific action items for each blocker
    */
   private generateFallbackAnalysis(
     blockers: Array<{ description: string; category: string; severity: string; status: string }>,
@@ -425,64 +452,26 @@ GUIDELINES:
     });
 
     const topCategory = Object.entries(categoryCount).sort((a, b) => b[1] - a[1])[0];
-    const grouped = this.groupBlockersBySeverity(blockers);
 
-    const actionItems: ActionItem[] = [];
-
-    // Generate severity-specific action items
-    if (severityCount.High > 0) {
-      const highBlockers = grouped.high.slice(0, 2);
-      actionItems.push({
-        title: '🔴 Immediate: Address High Severity Blockers',
-        description: `There are ${severityCount.High} high severity blockers requiring immediate attention. These are blocking critical work.`,
-        priority: 'high',
-        severity: 'High',
-        category: highBlockers[0]?.category,
-        suggestedSolution: `1. Schedule emergency meeting to discuss blockers\n2. Identify owners for each blocker\n3. Set 24-hour resolution target\n4. Escalate to management if external dependencies`,
-        estimatedEffort: 'quick-win',
-        relatedBlockers: highBlockers.map((b) => b.description.substring(0, 50)),
-      });
-    }
-
-    if (severityCount.Medium > 0) {
-      const mediumBlockers = grouped.medium.slice(0, 2);
-      actionItems.push({
-        title: '🟡 This Sprint: Resolve Medium Priority Issues',
-        description: `${severityCount.Medium} medium severity blockers should be addressed within this sprint to prevent escalation.`,
-        priority: 'medium',
-        severity: 'Medium',
-        category: mediumBlockers[0]?.category,
-        suggestedSolution: `1. Add blockers to sprint backlog\n2. Assign clear ownership\n3. Set realistic deadlines\n4. Create follow-up tasks if needed`,
-        estimatedEffort: 'short-term',
-        relatedBlockers: mediumBlockers.map((b) => b.description.substring(0, 50)),
-      });
-    }
-
-    if (severityCount.Low > 0) {
-      const lowBlockers = grouped.low.slice(0, 2);
-      actionItems.push({
-        title: '🟢 Backlog: Schedule Low Priority Items',
-        description: `${severityCount.Low} low severity blockers can be scheduled for future sprints.`,
-        priority: 'low',
-        severity: 'Low',
-        category: lowBlockers[0]?.category,
-        suggestedSolution: `1. Add to backlog with proper labels\n2. Review during sprint planning\n3. Consider batching similar issues\n4. Document workarounds if available`,
-        estimatedEffort: 'long-term',
-        relatedBlockers: lowBlockers.map((b) => b.description.substring(0, 50)),
-      });
-    }
-
-    // Add category-specific recommendation if there's a dominant category
-    if (topCategory && topCategory[1] >= 2) {
-      actionItems.push({
-        title: `📊 Pattern: Address Recurring ${topCategory[0]} Issues`,
-        description: `${topCategory[0]} blockers appear ${topCategory[1]} times. Consider a systematic approach to prevent recurrence.`,
-        priority: 'medium',
-        category: topCategory[0],
-        suggestedSolution: this.getCategorySuggestion(topCategory[0]),
-        estimatedEffort: 'short-term',
-      });
-    }
+    // Generate specific action item for each blocker
+    const actionItems: ActionItem[] = blockers.map((blocker, index) => {
+      const blockerRef = `B${index + 1}`;
+      const { team, solution, nextStep } = this.getBlockerSpecificRecommendation(blocker);
+      
+      return {
+        title: `${this.getSeverityEmoji(blocker.severity)} ${blockerRef}: ${this.truncate(blocker.description, 50)}`,
+        description: `For ${blockerRef} (${blocker.description}): ${solution.split('\n')[0]}`,
+        priority: blocker.severity === 'High' ? 'high' : blocker.severity === 'Medium' ? 'medium' : 'low',
+        severity: blocker.severity as 'High' | 'Medium' | 'Low',
+        category: blocker.category,
+        blockerRef,
+        blockerDescription: blocker.description,
+        teamToInvolve: team,
+        suggestedSolution: solution,
+        immediateNextStep: nextStep,
+        estimatedEffort: blocker.severity === 'High' ? 'quick-win' : blocker.severity === 'Medium' ? 'short-term' : 'long-term',
+      };
+    });
 
     return {
       summary: `${targetName} reported ${blockers.length} blockers during this period. ${severityCount.High > 0 ? `⚠️ ${severityCount.High} require immediate attention. ` : ''}The most common category was ${topCategory?.[0] || 'Other'} with ${topCategory?.[1] || 0} occurrences. Currently, ${openCount} blockers remain open.`,
@@ -495,6 +484,96 @@ GUIDELINES:
           ? `🔄 Most frequent category: ${topCategory[0]} (${Math.round((topCategory[1] / blockers.length) * 100)}% of all blockers)`
           : '',
       ].filter(Boolean),
+    };
+  }
+
+  /**
+   * Get severity emoji
+   */
+  private getSeverityEmoji(severity: string): string {
+    return severity === 'High' ? '🔴' : severity === 'Medium' ? '🟡' : '🟢';
+  }
+
+  /**
+   * Truncate string to specified length
+   */
+  private truncate(str: string, length: number): string {
+    return str.length > length ? str.substring(0, length) + '...' : str;
+  }
+
+  /**
+   * Get blocker-specific recommendation based on category and description
+   */
+  private getBlockerSpecificRecommendation(blocker: { description: string; category: string; severity: string }): {
+    team: string;
+    solution: string;
+    nextStep: string;
+  } {
+    const description = blocker.description.toLowerCase();
+    
+    // Infrastructure/DevOps related
+    if (blocker.category === 'Infrastructure' || 
+        description.includes('config') || 
+        description.includes('deployment') || 
+        description.includes('server') ||
+        description.includes('environment') ||
+        description.includes('ci/cd') ||
+        description.includes('pipeline')) {
+      return {
+        team: 'DevOps Team',
+        solution: `1. Schedule sync with DevOps team to review the issue\n2. Document current configuration and desired state\n3. Implement configuration management solution (e.g., Consul, AWS Parameter Store)\n4. Set up monitoring and alerts for configuration drift`,
+        nextStep: 'Schedule 15-min call with DevOps lead to discuss configuration management',
+      };
+    }
+
+    // Technical/Code related
+    if (blocker.category === 'Technical' || 
+        description.includes('api') || 
+        description.includes('code') || 
+        description.includes('bug') ||
+        description.includes('performance') ||
+        description.includes('memory') ||
+        description.includes('error')) {
+      return {
+        team: 'Backend/Frontend Team',
+        solution: `1. Create detailed bug report with reproduction steps\n2. Review relevant code with team lead\n3. Implement fix with proper test coverage\n4. Request code review before merging`,
+        nextStep: 'Create Jira ticket with reproduction steps and assign to tech lead',
+      };
+    }
+
+    // Dependency related
+    if (blocker.category === 'Dependency' || 
+        description.includes('waiting') || 
+        description.includes('blocked by') || 
+        description.includes('depends on') ||
+        description.includes('third-party') ||
+        description.includes('external')) {
+      return {
+        team: 'Product Manager + External Team',
+        solution: `1. Identify the exact dependency and owner\n2. Set up sync meeting with dependent team\n3. Establish clear timeline and escalation path\n4. Document workaround if possible`,
+        nextStep: 'Send Slack message to dependent team lead requesting status update',
+      };
+    }
+
+    // Process related
+    if (blocker.category === 'Process' || 
+        description.includes('approval') || 
+        description.includes('review') || 
+        description.includes('requirement') ||
+        description.includes('unclear') ||
+        description.includes('documentation')) {
+      return {
+        team: 'Team Lead / Engineering Manager',
+        solution: `1. Document the process gap or unclear requirement\n2. Schedule clarification meeting with stakeholders\n3. Update documentation and communicate changes\n4. Set up recurring review to prevent recurrence`,
+        nextStep: 'Schedule 30-min meeting with Product Manager for clarification',
+      };
+    }
+
+    // Default recommendation
+    return {
+      team: 'Team Lead',
+      solution: `1. Analyze the root cause of the blocker\n2. Identify the right owner/team to address it\n3. Create action plan with clear timeline\n4. Follow up until resolution`,
+      nextStep: 'Discuss with team lead in next standup to identify owner',
     };
   }
 
