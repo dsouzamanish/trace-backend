@@ -24,6 +24,8 @@ export interface AiReport {
   targetMember?: string;
   targetTeam?: string;
   reportPeriod: ReportPeriod;
+  startDate: string;           // Start of the report date range (ISO date)
+  endDate: string;             // End of the report date range (ISO date)
   summary: string;
   actionItems: ActionItem[];
   insights: string[];
@@ -38,6 +40,8 @@ export interface AiReportContentstack {
   target_member?: Array<{ uid: string; _content_type_uid: string }>;
   target_team?: string;
   report_period: ReportPeriod;
+  start_date: string;          // Start of the report date range
+  end_date: string;            // End of the report date range
   summary: string;
   // Stored as JSON strings in Contentstack text fields
   action_items: string | ActionItem[];

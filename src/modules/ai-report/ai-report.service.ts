@@ -64,6 +64,8 @@ export class AiReportService {
       targetMember: entry.target_member?.[0]?.uid,
       targetTeam: entry.target_team,
       reportPeriod: entry.report_period,
+      startDate: entry.start_date,
+      endDate: entry.end_date,
       summary: entry.summary,
       actionItems,
       insights,
@@ -74,25 +76,59 @@ export class AiReportService {
   }
 
   /**
-   * Check if a report already exists for the given period
-   * Returns the existing report if found within the current period window
+   * Calculate the date range for a given period
+   * Returns start and end dates for the period
+   */
+  private getDateRange(period: ReportPeriod): { startDate: Date; endDate: Date } {
+    const endDate = new Date();
+    endDate.setHours(23, 59, 59, 999); // End of today
+    
+    const startDate = new Date();
+    if (period === 'weekly') {
+      startDate.setDate(startDate.getDate() - 7);
+    } else {
+      startDate.setDate(startDate.getDate() - 30);
+    }
+    startDate.setHours(0, 0, 0, 0); // Start of the day
+    
+    return { startDate, endDate };
+  }
+
+  /**
+   * Normalize a date to start of day for comparison (YYYY-MM-DD)
+   */
+  private normalizeDate(date: Date | string): string {
+    const d = new Date(date);
+    return d.toISOString().split('T')[0]; // Returns YYYY-MM-DD
+  }
+
+  /**
+   * Check if a report already exists for the given date range
+   * Returns the existing report if found with matching start and end dates
    */
   private async findExistingReport(
     reportType: ReportType,
     targetId: string, // member UID or team name
     period: ReportPeriod,
+    startDate: Date,
+    endDate: Date,
   ): Promise<AiReport | null> {
-    const fromDate = this.getFromDate(period);
+    const normalizedStart = this.normalizeDate(startDate);
+    const normalizedEnd = this.normalizeDate(endDate);
 
     if (reportType === 'individual') {
       // Get recent reports for this member
       const reports = await this.getReportsForMember(targetId);
       
-      // Find a report generated within the current period window
+      // Find a report with the exact same date range
       const existingReport = reports.find((report) => {
         if (report.reportPeriod !== period) return false;
-        const reportDate = new Date(report.generatedAt);
-        return reportDate >= fromDate;
+        if (!report.startDate || !report.endDate) return false;
+        
+        const reportStart = this.normalizeDate(report.startDate);
+        const reportEnd = this.normalizeDate(report.endDate);
+        
+        return reportStart === normalizedStart && reportEnd === normalizedEnd;
       });
 
       return existingReport || null;
@@ -100,11 +136,15 @@ export class AiReportService {
       // Get recent reports for this team
       const reports = await this.getReportsForTeam(targetId);
       
-      // Find a report generated within the current period window
+      // Find a report with the exact same date range
       const existingReport = reports.find((report) => {
         if (report.reportPeriod !== period) return false;
-        const reportDate = new Date(report.generatedAt);
-        return reportDate >= fromDate;
+        if (!report.startDate || !report.endDate) return false;
+        
+        const reportStart = this.normalizeDate(report.startDate);
+        const reportEnd = this.normalizeDate(report.endDate);
+        
+        return reportStart === normalizedStart && reportEnd === normalizedEnd;
       });
 
       return existingReport || null;
@@ -113,7 +153,7 @@ export class AiReportService {
 
   /**
    * Generate AI report for an individual user
-   * Returns existing report if one was already generated for the same period
+   * Returns existing report if one was already generated for the same date range
    */
   async generateIndividualReport(
     teamMemberUid: string,
@@ -125,19 +165,30 @@ export class AiReportService {
       throw new NotFoundException('Team member not found');
     }
 
+    // Calculate date range for this report
+    const { startDate, endDate } = this.getDateRange(period);
+
     // Check for existing report unless force regenerate is requested
     if (!forceRegenerate) {
-      const existingReport = await this.findExistingReport('individual', teamMemberUid, period);
+      const existingReport = await this.findExistingReport(
+        'individual',
+        teamMemberUid,
+        period,
+        startDate,
+        endDate,
+      );
       if (existingReport) {
-        console.log(`Returning existing ${period} report for ${teamMember.firstName} ${teamMember.lastName}`);
+        console.log(
+          `Returning existing ${period} report for ${teamMember.firstName} ${teamMember.lastName} ` +
+          `(${this.normalizeDate(startDate)} to ${this.normalizeDate(endDate)})`
+        );
         return { ...existingReport, isExisting: true };
       }
     }
 
     // Get blockers for the specified period
-    const fromDate = this.getFromDate(period);
     const filterDto = {
-      fromDate: fromDate.toISOString(),
+      fromDate: startDate.toISOString(),
       limit: 100,
     } as FilterBlockerDto;
 
@@ -148,10 +199,12 @@ export class AiReportService {
 
     // Save report to Contentstack (stringify arrays for text fields)
     const reportData = {
-      title: `${period} Report - ${teamMember.firstName} ${teamMember.lastName}`,
+      title: `${period} Report - ${teamMember.firstName} ${teamMember.lastName} (${this.normalizeDate(startDate)} to ${this.normalizeDate(endDate)})`,
       report_type: 'individual' as ReportType,
       target_member: [{ uid: teamMemberUid, _content_type_uid: 'team_member' }],
       report_period: period,
+      start_date: startDate.toISOString(),
+      end_date: endDate.toISOString(),
       summary: aiAnalysis.summary,
       action_items: JSON.stringify(aiAnalysis.actionItems),
       insights: JSON.stringify(aiAnalysis.insights),
@@ -168,26 +221,37 @@ export class AiReportService {
 
   /**
    * Generate AI report for a team
-   * Returns existing report if one was already generated for the same period
+   * Returns existing report if one was already generated for the same date range
    */
   async generateTeamReport(
     team: string,
     period: ReportPeriod = 'weekly',
     forceRegenerate: boolean = false,
   ): Promise<AiReport & { isExisting?: boolean }> {
+    // Calculate date range for this report
+    const { startDate, endDate } = this.getDateRange(period);
+
     // Check for existing report unless force regenerate is requested
     if (!forceRegenerate) {
-      const existingReport = await this.findExistingReport('team', team, period);
+      const existingReport = await this.findExistingReport(
+        'team',
+        team,
+        period,
+        startDate,
+        endDate,
+      );
       if (existingReport) {
-        console.log(`Returning existing ${period} report for team ${team}`);
+        console.log(
+          `Returning existing ${period} report for team ${team} ` +
+          `(${this.normalizeDate(startDate)} to ${this.normalizeDate(endDate)})`
+        );
         return { ...existingReport, isExisting: true };
       }
     }
 
     // Get blockers for the team
-    const fromDate = this.getFromDate(period);
     const filterDto = {
-      fromDate: fromDate.toISOString(),
+      fromDate: startDate.toISOString(),
       limit: 500,
     } as FilterBlockerDto;
 
@@ -198,10 +262,12 @@ export class AiReportService {
 
     // Save report to Contentstack (stringify arrays for text fields)
     const reportData = {
-      title: `${period} Team Report - ${team}`,
+      title: `${period} Team Report - ${team} (${this.normalizeDate(startDate)} to ${this.normalizeDate(endDate)})`,
       report_type: 'team' as ReportType,
       target_team: team,
       report_period: period,
+      start_date: startDate.toISOString(),
+      end_date: endDate.toISOString(),
       summary: aiAnalysis.summary,
       action_items: JSON.stringify(aiAnalysis.actionItems),
       insights: JSON.stringify(aiAnalysis.insights),
