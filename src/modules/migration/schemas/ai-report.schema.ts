@@ -74,7 +74,7 @@ export const aiReportSchema = {
         display_name: 'Start Date',
         uid: 'start_date',
         data_type: 'isodate',
-        mandatory: true,
+        mandatory: false,
         unique: false,
         field_metadata: {
           description: 'Start date of the report period (inclusive)',
@@ -84,7 +84,7 @@ export const aiReportSchema = {
         display_name: 'End Date',
         uid: 'end_date',
         data_type: 'isodate',
-        mandatory: true,
+        mandatory: false,
         unique: false,
         field_metadata: {
           description: 'End date of the report period (inclusive)',

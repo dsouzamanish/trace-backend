@@ -116,39 +116,58 @@ export class AiReportService {
     const normalizedStart = this.normalizeDate(startDate);
     const normalizedEnd = this.normalizeDate(endDate);
 
+    console.log(`[findExistingReport] Looking for ${reportType} report for ${targetId}`);
+    console.log(`[findExistingReport] Date range: ${normalizedStart} to ${normalizedEnd}, period: ${period}`);
+
+    let reports: AiReport[];
     if (reportType === 'individual') {
-      // Get recent reports for this member
-      const reports = await this.getReportsForMember(targetId);
-      
-      // Find a report with the exact same date range
-      const existingReport = reports.find((report) => {
-        if (report.reportPeriod !== period) return false;
-        if (!report.startDate || !report.endDate) return false;
-        
-        const reportStart = this.normalizeDate(report.startDate);
-        const reportEnd = this.normalizeDate(report.endDate);
-        
-        return reportStart === normalizedStart && reportEnd === normalizedEnd;
-      });
-
-      return existingReport || null;
+      reports = await this.getReportsForMember(targetId);
     } else {
-      // Get recent reports for this team
-      const reports = await this.getReportsForTeam(targetId);
-      
-      // Find a report with the exact same date range
-      const existingReport = reports.find((report) => {
-        if (report.reportPeriod !== period) return false;
-        if (!report.startDate || !report.endDate) return false;
-        
-        const reportStart = this.normalizeDate(report.startDate);
-        const reportEnd = this.normalizeDate(report.endDate);
-        
-        return reportStart === normalizedStart && reportEnd === normalizedEnd;
-      });
-
-      return existingReport || null;
+      reports = await this.getReportsForTeam(targetId);
     }
+
+    console.log(`[findExistingReport] Found ${reports.length} existing reports`);
+
+    // Find a report with the exact same date range
+    const existingReport = reports.find((report) => {
+      console.log(`[findExistingReport] Checking report ${report.uid}:`);
+      console.log(`  - reportPeriod: ${report.reportPeriod} (expected: ${period})`);
+      console.log(`  - startDate: ${report.startDate}, endDate: ${report.endDate}`);
+      
+      if (report.reportPeriod !== period) {
+        console.log(`  - SKIP: period mismatch`);
+        return false;
+      }
+      
+      // If report doesn't have date range, check if it was generated today (legacy support)
+      if (!report.startDate || !report.endDate) {
+        const generatedToday = this.normalizeDate(report.generatedAt) === this.normalizeDate(new Date());
+        console.log(`  - No date range, generated today: ${generatedToday}`);
+        if (generatedToday) {
+          console.log(`  - MATCH: Legacy report generated today`);
+          return true;
+        }
+        console.log(`  - SKIP: No date range and not generated today`);
+        return false;
+      }
+      
+      const reportStart = this.normalizeDate(report.startDate);
+      const reportEnd = this.normalizeDate(report.endDate);
+      
+      console.log(`  - Normalized: ${reportStart} to ${reportEnd}`);
+      
+      const matches = reportStart === normalizedStart && reportEnd === normalizedEnd;
+      console.log(`  - ${matches ? 'MATCH' : 'NO MATCH'}`);
+      return matches;
+    });
+
+    if (existingReport) {
+      console.log(`[findExistingReport] Found existing report: ${existingReport.uid}`);
+    } else {
+      console.log(`[findExistingReport] No existing report found`);
+    }
+
+    return existingReport || null;
   }
 
   /**
@@ -286,19 +305,30 @@ export class AiReportService {
    * Get reports for a team member
    */
   async getReportsForMember(teamMemberUid: string): Promise<AiReport[]> {
+    console.log(`[getReportsForMember] Fetching reports for member: ${teamMemberUid}`);
+    
     const entries = await this.contentstackService.getEntries<AiReportContentstack>(
       CONTENT_TYPE_UID,
       {
         where: { report_type: 'individual' },
-        limit: 10,
+        limit: 50, // Increased limit to ensure we get enough reports
         includeReference: ['target_member'],
       },
     );
+
+    console.log(`[getReportsForMember] Total individual reports fetched: ${entries.length}`);
 
     // Filter by member (since Contentstack query on reference is complex)
     const filtered = entries.filter(
       (e) => e.target_member?.[0]?.uid === teamMemberUid,
     );
+
+    console.log(`[getReportsForMember] Reports for this member: ${filtered.length}`);
+    
+    // Log each report's date info
+    filtered.forEach((e, i) => {
+      console.log(`[getReportsForMember]   ${i + 1}. uid=${e.uid}, start=${e.start_date}, end=${e.end_date}`);
+    });
 
     return filtered.map((entry) => this.transformEntry(entry));
   }
@@ -307,13 +337,22 @@ export class AiReportService {
    * Get reports for a team
    */
   async getReportsForTeam(team: string): Promise<AiReport[]> {
+    console.log(`[getReportsForTeam] Fetching reports for team: ${team}`);
+    
     const entries = await this.contentstackService.getEntries<AiReportContentstack>(
       CONTENT_TYPE_UID,
       {
         where: { report_type: 'team', target_team: team },
-        limit: 10,
+        limit: 50, // Increased limit
       },
     );
+
+    console.log(`[getReportsForTeam] Reports found: ${entries.length}`);
+    
+    // Log each report's date info
+    entries.forEach((e, i) => {
+      console.log(`[getReportsForTeam]   ${i + 1}. uid=${e.uid}, start=${e.start_date}, end=${e.end_date}`);
+    });
 
     return entries.map((entry) => this.transformEntry(entry));
   }
