@@ -2,7 +2,7 @@
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import * as contentstack from '@contentstack/management';
-import { teamMemberSchema, blockerSchema, aiReportSchema } from './schemas';
+import { teamMemberSchema, blockerSchema, aiReportSchema, teamSchema } from './schemas';
 import { teamMembersSeed, blockersSeed } from './seed-data';
 
 export interface MigrationResult {
@@ -55,6 +55,7 @@ export class MigrationService implements OnModuleInit {
     // Create content types in order (team_member first as it's referenced by others)
     const schemas = [
       { name: 'Team Member', schema: teamMemberSchema },
+      { name: 'Team', schema: teamSchema }, // After team_member since it references team_member
       { name: 'Blocker', schema: blockerSchema },
       { name: 'AI Report', schema: aiReportSchema },
     ];
@@ -321,8 +322,8 @@ export class MigrationService implements OnModuleInit {
     this.logger.warn('Starting migration rollback - deleting content types...');
     const results: MigrationResult[] = [];
 
-    // Delete in reverse order (blockers and ai_report first, then team_member)
-    const contentTypes = ['ai_report', 'blocker', 'team_member'];
+    // Delete in reverse order (ai_report and blocker first, then team, then team_member)
+    const contentTypes = ['ai_report', 'blocker', 'team', 'team_member'];
 
     for (const uid of contentTypes) {
       try {
@@ -365,7 +366,7 @@ export class MigrationService implements OnModuleInit {
   async getMigrationStatus(): Promise<
     Array<{ contentType: string; exists: boolean; entryCount: number }>
   > {
-    const contentTypes = ['team_member', 'blocker', 'ai_report'];
+    const contentTypes = ['team_member', 'team', 'blocker', 'ai_report'];
     const status: Array<{ contentType: string; exists: boolean; entryCount: number }> = [];
 
     for (const uid of contentTypes) {

@@ -59,6 +59,13 @@ export class AiReportController {
     return this.aiReportService.getReportsForTeam(teamName);
   }
 
+  @Get('member/:memberId')
+  @Roles(Role.MANAGER)
+  @ApiOperation({ summary: 'Get AI reports for a specific team member (Manager only)' })
+  getMemberReports(@Param('memberId') memberId: string) {
+    return this.aiReportService.getReportsForMember(memberId);
+  }
+
   @Get(':id')
   @ApiOperation({ summary: 'Get a specific AI report by ID' })
   getReport(@Param('id') id: string) {

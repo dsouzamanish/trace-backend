@@ -1,10 +1,17 @@
 export type ReportType = 'individual' | 'team';
 export type ReportPeriod = 'weekly' | 'monthly';
+export type BlockerSeverity = 'High' | 'Medium' | 'Low';
 
 export interface ActionItem {
   title: string;
   description: string;
   priority: 'high' | 'medium' | 'low';
+  // Enhanced fields for more specific recommendations
+  severity?: BlockerSeverity;
+  category?: string;
+  suggestedSolution?: string;
+  estimatedEffort?: 'quick-win' | 'short-term' | 'long-term';
+  relatedBlockers?: string[];
 }
 
 export interface AiReport {
@@ -28,8 +35,9 @@ export interface AiReportContentstack {
   target_team?: string;
   report_period: ReportPeriod;
   summary: string;
-  action_items: ActionItem[];
-  insights: string[];
+  // Stored as JSON strings in Contentstack text fields
+  action_items: string | ActionItem[];
+  insights: string | string[];
   generated_at: string;
   created_at?: string;
   updated_at?: string;

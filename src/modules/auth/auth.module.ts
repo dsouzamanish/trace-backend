@@ -7,6 +7,7 @@ import { AuthController } from './auth.controller';
 import { JwtStrategy } from './strategies/jwt.strategy';
 import { GoogleStrategy } from './strategies/google.strategy';
 import { TeamMemberModule } from '../team-member/team-member.module';
+import { TeamModule } from '../team/team.module';
 
 @Module({
   imports: [
@@ -22,6 +23,7 @@ import { TeamMemberModule } from '../team-member/team-member.module';
       inject: [ConfigService],
     }),
     TeamMemberModule,
+    TeamModule, // Import TeamModule to check manager status from Team entries
   ],
   controllers: [AuthController],
   providers: [AuthService, JwtStrategy, GoogleStrategy],

@@ -34,6 +34,30 @@ export class AiReportService {
    * Transform Contentstack entry to AiReport entity
    */
   private transformEntry(entry: AiReportContentstack): AiReport {
+    // Parse action_items and insights from JSON strings if stored as text
+    let actionItems: ActionItem[] = [];
+    let insights: string[] = [];
+
+    try {
+      if (typeof entry.action_items === 'string') {
+        actionItems = JSON.parse(entry.action_items);
+      } else if (Array.isArray(entry.action_items)) {
+        actionItems = entry.action_items;
+      }
+    } catch {
+      actionItems = [];
+    }
+
+    try {
+      if (typeof entry.insights === 'string') {
+        insights = JSON.parse(entry.insights);
+      } else if (Array.isArray(entry.insights)) {
+        insights = entry.insights;
+      }
+    } catch {
+      insights = [];
+    }
+
     return {
       uid: entry.uid,
       reportType: entry.report_type,
@@ -41,8 +65,8 @@ export class AiReportService {
       targetTeam: entry.target_team,
       reportPeriod: entry.report_period,
       summary: entry.summary,
-      actionItems: entry.action_items || [],
-      insights: entry.insights || [],
+      actionItems,
+      insights,
       generatedAt: entry.generated_at,
       createdAt: entry.created_at,
       updatedAt: entry.updated_at,
@@ -73,15 +97,15 @@ export class AiReportService {
     // Generate AI insights
     const aiAnalysis = await this.analyzeBlockers(blockers, 'individual', teamMember.firstName);
 
-    // Save report to Contentstack
+    // Save report to Contentstack (stringify arrays for text fields)
     const reportData = {
       title: `${period} Report - ${teamMember.firstName} ${teamMember.lastName}`,
       report_type: 'individual' as ReportType,
       target_member: [{ uid: teamMemberUid, _content_type_uid: 'team_member' }],
       report_period: period,
       summary: aiAnalysis.summary,
-      action_items: aiAnalysis.actionItems,
-      insights: aiAnalysis.insights,
+      action_items: JSON.stringify(aiAnalysis.actionItems),
+      insights: JSON.stringify(aiAnalysis.insights),
       generated_at: new Date().toISOString(),
     };
 
@@ -109,15 +133,15 @@ export class AiReportService {
     // Generate AI insights
     const aiAnalysis = await this.analyzeBlockers(blockers, 'team', team);
 
-    // Save report to Contentstack
+    // Save report to Contentstack (stringify arrays for text fields)
     const reportData = {
       title: `${period} Team Report - ${team}`,
       report_type: 'team' as ReportType,
       target_team: team,
       report_period: period,
       summary: aiAnalysis.summary,
-      action_items: aiAnalysis.actionItems,
-      insights: aiAnalysis.insights,
+      action_items: JSON.stringify(aiAnalysis.actionItems),
+      insights: JSON.stringify(aiAnalysis.insights),
       generated_at: new Date().toISOString(),
     };
 
@@ -179,7 +203,36 @@ export class AiReportService {
   }
 
   /**
-   * Analyze blockers using OpenAI
+   * Group blockers by severity for better analysis
+   */
+  private groupBlockersBySeverity(
+    blockers: Array<{ description: string; category: string; severity: string; status: string }>,
+  ): {
+    high: typeof blockers;
+    medium: typeof blockers;
+    low: typeof blockers;
+  } {
+    return {
+      high: blockers.filter((b) => b.severity === 'High'),
+      medium: blockers.filter((b) => b.severity === 'Medium'),
+      low: blockers.filter((b) => b.severity === 'Low'),
+    };
+  }
+
+  /**
+   * Format blockers for the AI prompt
+   */
+  private formatBlockersForPrompt(
+    blockers: Array<{ description: string; category: string; severity: string; status: string }>,
+  ): string {
+    if (blockers.length === 0) return 'None';
+    return blockers
+      .map((b, i) => `  ${i + 1}. [${b.category}] ${b.description} (Status: ${b.status})`)
+      .join('\n');
+  }
+
+  /**
+   * Analyze blockers using OpenAI with enhanced severity-specific recommendations
    */
   private async analyzeBlockers(
     blockers: Array<{ description: string; category: string; severity: string; status: string }>,
@@ -194,40 +247,86 @@ export class AiReportService {
       };
     }
 
-    const blockerSummary = blockers
-      .map(
-        (b, i) =>
-          `${i + 1}. [${b.category}] [${b.severity}] ${b.description} (Status: ${b.status})`,
-      )
-      .join('\n');
+    // Group blockers by severity for more targeted analysis
+    const grouped = this.groupBlockersBySeverity(blockers);
+    const openBlockers = blockers.filter((b) => b.status === 'Open');
 
-    const prompt = `You are a productivity analyst. Analyze the following blockers reported by ${
+    // Get unique categories
+    const categories = [...new Set(blockers.map((b) => b.category))];
+
+    const prompt = `You are an expert productivity analyst and engineering manager. Analyze the blockers reported by ${
       reportType === 'individual' ? 'an individual team member' : 'a team'
-    } named "${targetName}" and provide:
+    } named "${targetName}" and provide actionable, specific recommendations.
 
-1. A brief summary (2-3 sentences) of the main productivity challenges
-2. Up to 5 actionable recommendations to improve productivity
-3. Key insights about patterns in the blockers
+## BLOCKERS BY SEVERITY
 
-Blockers:
-${blockerSummary}
+### 🔴 HIGH SEVERITY (${grouped.high.length} blockers) - Immediate attention required
+${this.formatBlockersForPrompt(grouped.high)}
+
+### 🟡 MEDIUM SEVERITY (${grouped.medium.length} blockers) - Should be addressed this sprint
+${this.formatBlockersForPrompt(grouped.medium)}
+
+### 🟢 LOW SEVERITY (${grouped.low.length} blockers) - Can be scheduled for later
+${this.formatBlockersForPrompt(grouped.low)}
+
+## STATISTICS
+- Total Blockers: ${blockers.length}
+- Open Blockers: ${openBlockers.length}
+- Categories Affected: ${categories.join(', ')}
+
+## YOUR TASK
+
+Provide a comprehensive analysis with SPECIFIC, ACTIONABLE recommendations for EACH severity level. Each action item should:
+1. Reference the specific blocker(s) it addresses
+2. Provide a concrete solution or approach
+3. Include an estimated effort level (quick-win: <1 day, short-term: 1-5 days, long-term: >5 days)
 
 Respond in JSON format:
 {
-  "summary": "string",
+  "summary": "A 2-3 sentence executive summary of the main productivity challenges and overall health",
   "actionItems": [
-    { "title": "string", "description": "string", "priority": "high|medium|low" }
+    {
+      "title": "Brief action title",
+      "description": "Detailed description of what to do",
+      "priority": "high|medium|low",
+      "severity": "High|Medium|Low",
+      "category": "category name this addresses",
+      "suggestedSolution": "Specific step-by-step solution or approach to resolve this",
+      "estimatedEffort": "quick-win|short-term|long-term",
+      "relatedBlockers": ["brief description of related blocker 1", "brief description of related blocker 2"]
+    }
   ],
-  "insights": ["string"]
-}`;
+  "insights": [
+    "Pattern or trend observation 1",
+    "Pattern or trend observation 2",
+    "Recommendation for process improvement"
+  ]
+}
+
+GUIDELINES:
+- Generate 2-3 action items for HIGH severity blockers (if any exist)
+- Generate 1-2 action items for MEDIUM severity blockers (if any exist)
+- Generate 1 action item for LOW severity blockers (if any exist)
+- Make suggestions specific to the blocker descriptions, not generic advice
+- Include concrete solutions like "Set up daily standup", "Create shared documentation", "Implement code review checklist"
+- For technical blockers, suggest specific tools, processes, or architectural changes
+- For dependency blockers, suggest communication strategies or escalation paths
+- For resource blockers, suggest prioritization frameworks or resource allocation strategies`;
 
     try {
       const completion = await this.openai.chat.completions.create({
         model: 'gpt-4o-mini',
-        messages: [{ role: 'user', content: prompt }],
+        messages: [
+          {
+            role: 'system',
+            content:
+              'You are an expert productivity analyst who provides specific, actionable recommendations. Always be concrete and avoid generic advice. Reference specific blockers in your recommendations.',
+          },
+          { role: 'user', content: prompt },
+        ],
         response_format: { type: 'json_object' },
         temperature: 0.7,
-        max_tokens: 1000,
+        max_tokens: 2000,
       });
 
       const response = JSON.parse(completion.choices[0].message.content || '{}');
@@ -263,27 +362,98 @@ Respond in JSON format:
     });
 
     const topCategory = Object.entries(categoryCount).sort((a, b) => b[1] - a[1])[0];
+    const grouped = this.groupBlockersBySeverity(blockers);
+
+    const actionItems: ActionItem[] = [];
+
+    // Generate severity-specific action items
+    if (severityCount.High > 0) {
+      const highBlockers = grouped.high.slice(0, 2);
+      actionItems.push({
+        title: '🔴 Immediate: Address High Severity Blockers',
+        description: `There are ${severityCount.High} high severity blockers requiring immediate attention. These are blocking critical work.`,
+        priority: 'high',
+        severity: 'High',
+        category: highBlockers[0]?.category,
+        suggestedSolution: `1. Schedule emergency meeting to discuss blockers\n2. Identify owners for each blocker\n3. Set 24-hour resolution target\n4. Escalate to management if external dependencies`,
+        estimatedEffort: 'quick-win',
+        relatedBlockers: highBlockers.map((b) => b.description.substring(0, 50)),
+      });
+    }
+
+    if (severityCount.Medium > 0) {
+      const mediumBlockers = grouped.medium.slice(0, 2);
+      actionItems.push({
+        title: '🟡 This Sprint: Resolve Medium Priority Issues',
+        description: `${severityCount.Medium} medium severity blockers should be addressed within this sprint to prevent escalation.`,
+        priority: 'medium',
+        severity: 'Medium',
+        category: mediumBlockers[0]?.category,
+        suggestedSolution: `1. Add blockers to sprint backlog\n2. Assign clear ownership\n3. Set realistic deadlines\n4. Create follow-up tasks if needed`,
+        estimatedEffort: 'short-term',
+        relatedBlockers: mediumBlockers.map((b) => b.description.substring(0, 50)),
+      });
+    }
+
+    if (severityCount.Low > 0) {
+      const lowBlockers = grouped.low.slice(0, 2);
+      actionItems.push({
+        title: '🟢 Backlog: Schedule Low Priority Items',
+        description: `${severityCount.Low} low severity blockers can be scheduled for future sprints.`,
+        priority: 'low',
+        severity: 'Low',
+        category: lowBlockers[0]?.category,
+        suggestedSolution: `1. Add to backlog with proper labels\n2. Review during sprint planning\n3. Consider batching similar issues\n4. Document workarounds if available`,
+        estimatedEffort: 'long-term',
+        relatedBlockers: lowBlockers.map((b) => b.description.substring(0, 50)),
+      });
+    }
+
+    // Add category-specific recommendation if there's a dominant category
+    if (topCategory && topCategory[1] >= 2) {
+      actionItems.push({
+        title: `📊 Pattern: Address Recurring ${topCategory[0]} Issues`,
+        description: `${topCategory[0]} blockers appear ${topCategory[1]} times. Consider a systematic approach to prevent recurrence.`,
+        priority: 'medium',
+        category: topCategory[0],
+        suggestedSolution: this.getCategorySuggestion(topCategory[0]),
+        estimatedEffort: 'short-term',
+      });
+    }
 
     return {
-      summary: `${targetName} reported ${blockers.length} blockers during this period. The most common category was ${topCategory?.[0] || 'Other'} with ${topCategory?.[1] || 0} occurrences. Currently, ${openCount} blockers remain open.`,
-      actionItems: [
-        {
-          title: 'Address High Severity Blockers',
-          description: `There are ${severityCount.High} high severity blockers that need immediate attention.`,
-          priority: 'high',
-        },
-        {
-          title: `Review ${topCategory?.[0] || 'Common'} Issues`,
-          description: `Focus on resolving ${topCategory?.[0] || 'recurring'} blockers to improve productivity.`,
-          priority: 'medium',
-        },
-      ],
+      summary: `${targetName} reported ${blockers.length} blockers during this period. ${severityCount.High > 0 ? `⚠️ ${severityCount.High} require immediate attention. ` : ''}The most common category was ${topCategory?.[0] || 'Other'} with ${topCategory?.[1] || 0} occurrences. Currently, ${openCount} blockers remain open.`,
+      actionItems,
       insights: [
-        `Total blockers: ${blockers.length}`,
-        `High severity: ${severityCount.High}, Medium: ${severityCount.Medium}, Low: ${severityCount.Low}`,
-        `Open blockers: ${openCount}`,
-      ],
+        `📈 Total blockers: ${blockers.length}`,
+        `🔴 High severity: ${severityCount.High}, 🟡 Medium: ${severityCount.Medium}, 🟢 Low: ${severityCount.Low}`,
+        `⏳ Open blockers: ${openCount} (${Math.round((openCount / blockers.length) * 100)}% unresolved)`,
+        topCategory
+          ? `🔄 Most frequent category: ${topCategory[0]} (${Math.round((topCategory[1] / blockers.length) * 100)}% of all blockers)`
+          : '',
+      ].filter(Boolean),
     };
+  }
+
+  /**
+   * Get category-specific solution suggestions
+   */
+  private getCategorySuggestion(category: string): string {
+    const suggestions: Record<string, string> = {
+      Technical:
+        '1. Review technical architecture\n2. Consider pair programming sessions\n3. Set up knowledge sharing sessions\n4. Create technical documentation',
+      Dependency:
+        '1. Map all external dependencies\n2. Set up regular sync meetings with dependent teams\n3. Create escalation procedures\n4. Consider building abstractions to reduce coupling',
+      Resource:
+        '1. Review resource allocation with management\n2. Prioritize tasks by impact\n3. Consider temporary resource augmentation\n4. Identify tasks that can be deferred',
+      Process:
+        '1. Document current processes\n2. Identify bottlenecks\n3. Streamline approval workflows\n4. Implement automation where possible',
+      Communication:
+        '1. Set up regular sync meetings\n2. Create shared communication channels\n3. Document decisions and rationale\n4. Establish clear escalation paths',
+      Other:
+        '1. Categorize blockers more specifically\n2. Identify root causes\n3. Create action plans for each\n4. Set up regular review meetings',
+    };
+    return suggestions[category] || suggestions['Other'];
   }
 
   /**

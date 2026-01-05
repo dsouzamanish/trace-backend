@@ -1,6 +1,7 @@
 import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { TeamMemberService } from '../team-member/team-member.service';
+import { TeamService } from '../team/team.service';
 import { TeamMember } from '../team-member/entities/team-member.entity';
 
 export interface GoogleUser {
@@ -18,6 +19,7 @@ export interface JwtPayload {
   isManager: boolean;
   isAdmin?: boolean;
   team?: string;
+  managedTeams?: string[]; // UIDs of teams managed by this user
 }
 
 export interface AuthResponse {
@@ -31,6 +33,7 @@ export interface AuthResponse {
     designation?: string;
     team?: string;
     isManager: boolean;
+    managedTeams?: string[]; // UIDs of teams managed by this user
   };
 }
 
@@ -39,6 +42,7 @@ export class AuthService {
   constructor(
     private jwtService: JwtService,
     private teamMemberService: TeamMemberService,
+    private teamService: TeamService,
   ) {}
 
   async validateGoogleUser(googleUser: GoogleUser): Promise<AuthResponse> {
@@ -60,21 +64,32 @@ export class AuthService {
       });
     }
 
-    return this.generateAuthResponse(teamMember);
+    // Generate auth response (checks Team entries for manager status)
+    return await this.generateAuthResponse(teamMember);
   }
 
   async validateUserById(userId: string): Promise<TeamMember | null> {
     return this.teamMemberService.findById(userId);
   }
 
-  generateAuthResponse(teamMember: TeamMember): AuthResponse {
+  /**
+   * Generate auth response with manager status derived from Team entries
+   * A user is considered a manager if they are set as the manager in any Team entry
+   */
+  async generateAuthResponse(teamMember: TeamMember): Promise<AuthResponse> {
+    // Check if user is a manager of any team by looking at Team entries
+    const managedTeams = await this.teamService.findTeamsManagedBy(teamMember.uid);
+    const isManager = managedTeams.length > 0;
+    const managedTeamUids = managedTeams.map((t) => t.uid);
+
     const payload: JwtPayload = {
       sub: teamMember.uid,
       email: teamMember.email,
       firstName: teamMember.firstName,
       lastName: teamMember.lastName,
-      isManager: teamMember.isManager || false,
+      isManager,
       team: teamMember.team,
+      managedTeams: managedTeamUids,
     };
 
     return {
@@ -87,7 +102,8 @@ export class AuthService {
         profilePic: teamMember.profilePic,
         designation: teamMember.designation,
         team: teamMember.team,
-        isManager: teamMember.isManager || false,
+        isManager,
+        managedTeams: managedTeamUids,
       },
     };
   }
@@ -99,7 +115,8 @@ export class AuthService {
       throw new UnauthorizedException('User not found');
     }
 
-    return this.generateAuthResponse(teamMember);
+    // Generate auth response (re-checks Team entries for manager status)
+    return await this.generateAuthResponse(teamMember);
   }
 }
 
