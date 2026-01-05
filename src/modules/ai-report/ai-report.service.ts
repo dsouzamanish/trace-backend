@@ -74,15 +74,64 @@ export class AiReportService {
   }
 
   /**
+   * Check if a report already exists for the given period
+   * Returns the existing report if found within the current period window
+   */
+  private async findExistingReport(
+    reportType: ReportType,
+    targetId: string, // member UID or team name
+    period: ReportPeriod,
+  ): Promise<AiReport | null> {
+    const fromDate = this.getFromDate(period);
+
+    if (reportType === 'individual') {
+      // Get recent reports for this member
+      const reports = await this.getReportsForMember(targetId);
+      
+      // Find a report generated within the current period window
+      const existingReport = reports.find((report) => {
+        if (report.reportPeriod !== period) return false;
+        const reportDate = new Date(report.generatedAt);
+        return reportDate >= fromDate;
+      });
+
+      return existingReport || null;
+    } else {
+      // Get recent reports for this team
+      const reports = await this.getReportsForTeam(targetId);
+      
+      // Find a report generated within the current period window
+      const existingReport = reports.find((report) => {
+        if (report.reportPeriod !== period) return false;
+        const reportDate = new Date(report.generatedAt);
+        return reportDate >= fromDate;
+      });
+
+      return existingReport || null;
+    }
+  }
+
+  /**
    * Generate AI report for an individual user
+   * Returns existing report if one was already generated for the same period
    */
   async generateIndividualReport(
     teamMemberUid: string,
     period: ReportPeriod = 'weekly',
-  ): Promise<AiReport> {
+    forceRegenerate: boolean = false,
+  ): Promise<AiReport & { isExisting?: boolean }> {
     const teamMember = await this.teamMemberService.findById(teamMemberUid);
     if (!teamMember) {
       throw new NotFoundException('Team member not found');
+    }
+
+    // Check for existing report unless force regenerate is requested
+    if (!forceRegenerate) {
+      const existingReport = await this.findExistingReport('individual', teamMemberUid, period);
+      if (existingReport) {
+        console.log(`Returning existing ${period} report for ${teamMember.firstName} ${teamMember.lastName}`);
+        return { ...existingReport, isExisting: true };
+      }
     }
 
     // Get blockers for the specified period
@@ -119,8 +168,22 @@ export class AiReportService {
 
   /**
    * Generate AI report for a team
+   * Returns existing report if one was already generated for the same period
    */
-  async generateTeamReport(team: string, period: ReportPeriod = 'weekly'): Promise<AiReport> {
+  async generateTeamReport(
+    team: string,
+    period: ReportPeriod = 'weekly',
+    forceRegenerate: boolean = false,
+  ): Promise<AiReport & { isExisting?: boolean }> {
+    // Check for existing report unless force regenerate is requested
+    if (!forceRegenerate) {
+      const existingReport = await this.findExistingReport('team', team, period);
+      if (existingReport) {
+        console.log(`Returning existing ${period} report for team ${team}`);
+        return { ...existingReport, isExisting: true };
+      }
+    }
+
     // Get blockers for the team
     const fromDate = this.getFromDate(period);
     const filterDto = {

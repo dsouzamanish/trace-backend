@@ -15,35 +15,44 @@ export class AiReportController {
   constructor(private readonly aiReportService: AiReportService) {}
 
   @Post('generate/my')
-  @ApiOperation({ summary: 'Generate AI report for current user' })
+  @ApiOperation({ summary: 'Generate AI report for current user (returns existing if already generated for period)' })
   @ApiQuery({ name: 'period', enum: ['weekly', 'monthly'], required: false })
+  @ApiQuery({ name: 'force', type: Boolean, required: false, description: 'Force regenerate even if report exists' })
   generateMyReport(
     @CurrentUser('uid') userId: string,
     @Query('period') period: ReportPeriod = 'weekly',
+    @Query('force') force?: string,
   ) {
-    return this.aiReportService.generateIndividualReport(userId, period);
+    const forceRegenerate = force === 'true';
+    return this.aiReportService.generateIndividualReport(userId, period, forceRegenerate);
   }
 
   @Post('generate/member/:memberId')
   @Roles(Role.MANAGER)
-  @ApiOperation({ summary: 'Generate AI report for a team member (Manager only)' })
+  @ApiOperation({ summary: 'Generate AI report for a team member (returns existing if already generated for period)' })
   @ApiQuery({ name: 'period', enum: ['weekly', 'monthly'], required: false })
+  @ApiQuery({ name: 'force', type: Boolean, required: false, description: 'Force regenerate even if report exists' })
   generateMemberReport(
     @Param('memberId') memberId: string,
     @Query('period') period: ReportPeriod = 'weekly',
+    @Query('force') force?: string,
   ) {
-    return this.aiReportService.generateIndividualReport(memberId, period);
+    const forceRegenerate = force === 'true';
+    return this.aiReportService.generateIndividualReport(memberId, period, forceRegenerate);
   }
 
   @Post('generate/team/:teamName')
   @Roles(Role.MANAGER)
-  @ApiOperation({ summary: 'Generate AI report for a team (Manager only)' })
+  @ApiOperation({ summary: 'Generate AI report for a team (returns existing if already generated for period)' })
   @ApiQuery({ name: 'period', enum: ['weekly', 'monthly'], required: false })
+  @ApiQuery({ name: 'force', type: Boolean, required: false, description: 'Force regenerate even if report exists' })
   generateTeamReport(
     @Param('teamName') teamName: string,
     @Query('period') period: ReportPeriod = 'weekly',
+    @Query('force') force?: string,
   ) {
-    return this.aiReportService.generateTeamReport(teamName, period);
+    const forceRegenerate = force === 'true';
+    return this.aiReportService.generateTeamReport(teamName, period, forceRegenerate);
   }
 
   @Get('my')
