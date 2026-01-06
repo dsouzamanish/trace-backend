@@ -1,0 +1,127 @@
+# Trace Project - Cursor Rules
+
+## ⚠️ Important: Before Making Changes
+**Always refer to `prd.md` before implementing any changes.** This file contains the product requirements and specifications that guide all development decisions.
+
+---
+
+## Project Overview
+This is a full-stack application with a NestJS backend and React frontend, using Contentstack as the headless CMS.
+
+---
+
+## Backend Tech Stack
+
+### Framework & Language
+- **TypeScript** - Strict mode enabled, use explicit types
+- **NestJS** - Follow NestJS conventions and best practices
+  - Use decorators appropriately (@Controller, @Injectable, @Module, etc.)
+  - Implement proper dependency injection
+  - Organize code into modules, controllers, services, and DTOs
+  - Use Guards for authentication/authorization
+  - Use Pipes for validation
+  - Use Interceptors for logging and response transformation
+
+### Code Style & Formatting
+- **ESLint** - Follow the project's ESLint configuration
+- **Prettier** - Use Prettier for code formatting
+  - Single quotes for strings
+  - Trailing commas where valid
+  - 2-space indentation
+
+### Testing
+- **Jest** - Use Jest for all testing
+  - Write unit tests for services and utilities
+  - Write integration tests for controllers and API endpoints
+  - Use `describe` and `it` blocks with clear descriptions
+  - Mock external dependencies appropriately
+  - Aim for meaningful test coverage
+
+### CMS Integration
+- **Contentstack** - Use as the headless CMS
+  - Use the official Contentstack JavaScript SDK (`@contentstack/delivery-sdk` or `contentstack`)
+  - Create a dedicated Contentstack service/module for API interactions
+  - Implement proper error handling for CMS API calls
+  - Cache responses where appropriate
+  - Use environment variables for API keys and tokens
+
+### Backend Best Practices
+- Use DTOs for request/response validation
+- Implement proper error handling with NestJS exception filters
+- Use ConfigModule for environment configuration
+- Follow RESTful API conventions
+- Document APIs with Swagger/OpenAPI decorators
+
+---
+
+## Frontend Tech Stack
+
+### Framework & Language
+- **React** - Use functional components with hooks
+- **TypeScript** - Strict typing for all components and utilities
+
+### State Management
+- **Redux** - Use Redux for global state management
+  - Use Redux Toolkit for simplified Redux logic
+  - Create slices for feature-based state organization
+  - Use createAsyncThunk for async operations
+  - Keep state normalized where appropriate
+
+### Hosting
+- **Contentstack Launch** - Application will be deployed on Contentstack Launch
+  - Follow Launch deployment requirements
+  - Use environment variables for configuration
+  - Optimize build for production
+
+### Frontend Best Practices
+- Use functional components with React hooks
+- Implement proper loading and error states
+- Use React.memo and useMemo/useCallback for performance optimization
+- Keep components small and focused
+- Use CSS modules or styled-components for styling
+- Implement responsive design
+- Follow accessibility (a11y) best practices
+
+---
+
+## General Guidelines
+
+### File Structure
+```
+trace/
+├── backend/
+│   ├── src/
+│   │   ├── modules/
+│   │   ├── common/
+│   │   ├── config/
+│   │   └── main.ts
+│   ├── test/
+│   └── package.json
+├── frontend/
+│   ├── src/
+│   │   ├── components/
+│   │   ├── pages/
+│   │   ├── store/
+│   │   ├── services/
+│   │   └── App.tsx
+│   └── package.json
+└── .cursorrules
+```
+
+### Code Quality
+- Write self-documenting code with clear naming
+- Add comments for complex logic only
+- Keep functions small and single-purpose
+- Use async/await for asynchronous operations
+- Handle errors gracefully with user-friendly messages
+
+### Environment Variables
+- Never commit secrets or API keys
+- Use `.env` files for local development
+- Document required environment variables in `.env.example`
+
+### Git Practices
+- Write meaningful commit messages
+- Keep commits focused and atomic
+- Use feature branches for development
+
