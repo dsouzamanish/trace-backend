@@ -109,12 +109,12 @@ export class SlackService {
         callback_id: 'blocker_submission',
         title: {
           type: 'plain_text',
-          text: 'Log a Blocker',
+          text: '🚧 Report Blocker',
           emoji: true,
         },
         submit: {
           type: 'plain_text',
-          text: 'Submit',
+          text: '🚀 Submit',
           emoji: true,
         },
         close: {
@@ -124,11 +124,21 @@ export class SlackService {
         },
         blocks: [
           {
-            type: 'section',
+            type: 'header',
             text: {
-              type: 'mrkdwn',
-              text: '📝 *Log a blocker that is impacting your productivity*',
+              type: 'plain_text',
+              text: "🎯 What's blocking you?",
+              emoji: true,
             },
+          },
+          {
+            type: 'context',
+            elements: [
+              {
+                type: 'mrkdwn',
+                text: '💡 *Tip:* Be specific! The more details you provide, the faster we can help unblock you.',
+              },
+            ],
           },
           {
             type: 'divider',
@@ -140,15 +150,31 @@ export class SlackService {
               type: 'plain_text_input',
               action_id: 'description_input',
               multiline: true,
+              min_length: 10,
               placeholder: {
                 type: 'plain_text',
-                text: 'Describe your blocker in detail...',
+                text: '🔍 What exactly is blocking you? Include any relevant details, links, or error messages...',
               },
             },
             label: {
               type: 'plain_text',
-              text: 'Description',
+              text: '📝 Description',
               emoji: true,
+            },
+            hint: {
+              type: 'plain_text',
+              text: 'Be as detailed as possible for faster resolution',
+              emoji: true,
+            },
+          },
+          {
+            type: 'divider',
+          },
+          {
+            type: 'section',
+            text: {
+              type: 'mrkdwn',
+              text: '*📊 Categorize your blocker*',
             },
           },
           {
@@ -159,62 +185,26 @@ export class SlackService {
               action_id: 'category_select',
               placeholder: {
                 type: 'plain_text',
-                text: 'Select a category',
+                text: '🏷️ Choose category...',
               },
               options: [
-                {
-                  text: { type: 'plain_text', text: '⚙️ Process', emoji: true },
-                  value: 'Process',
-                },
-                {
-                  text: { type: 'plain_text', text: '💻 Technical', emoji: true },
-                  value: 'Technical',
-                },
-                {
-                  text: { type: 'plain_text', text: '🔗 Dependency', emoji: true },
-                  value: 'Dependency',
-                },
-                {
-                  text: { type: 'plain_text', text: '🏗️ Infrastructure', emoji: true },
-                  value: 'Infrastructure',
-                },
-                {
-                  text: { type: 'plain_text', text: '💬 Communication', emoji: true },
-                  value: 'Communication',
-                },
-                {
-                  text: { type: 'plain_text', text: '👥 Resource', emoji: true },
-                  value: 'Resource',
-                },
-                {
-                  text: { type: 'plain_text', text: '📚 Knowledge', emoji: true },
-                  value: 'Knowledge',
-                },
-                {
-                  text: { type: 'plain_text', text: '🔐 Access', emoji: true },
-                  value: 'Access',
-                },
-                {
-                  text: { type: 'plain_text', text: '🌐 External', emoji: true },
-                  value: 'External',
-                },
-                {
-                  text: { type: 'plain_text', text: '👁️ Review', emoji: true },
-                  value: 'Review',
-                },
-                {
-                  text: { type: 'plain_text', text: '🚨 Customer Escalation', emoji: true },
-                  value: 'Customer Escalation',
-                },
-                {
-                  text: { type: 'plain_text', text: '📦 Other', emoji: true },
-                  value: 'Other',
-                },
+                { text: { type: 'plain_text', text: '⚙️ Process - Workflow & approvals', emoji: true }, value: 'Process' },
+                { text: { type: 'plain_text', text: '💻 Technical - Bugs & complexity', emoji: true }, value: 'Technical' },
+                { text: { type: 'plain_text', text: '🔗 Dependency - Waiting on others', emoji: true }, value: 'Dependency' },
+                { text: { type: 'plain_text', text: '🏗️ Infrastructure - Servers & tools', emoji: true }, value: 'Infrastructure' },
+                { text: { type: 'plain_text', text: '💬 Communication - Unclear specs', emoji: true }, value: 'Communication' },
+                { text: { type: 'plain_text', text: '👥 Resource - People & budget', emoji: true }, value: 'Resource' },
+                { text: { type: 'plain_text', text: '📚 Knowledge - Skill gaps & docs', emoji: true }, value: 'Knowledge' },
+                { text: { type: 'plain_text', text: '🔐 Access - Permissions & creds', emoji: true }, value: 'Access' },
+                { text: { type: 'plain_text', text: '🌐 External - Vendors & clients', emoji: true }, value: 'External' },
+                { text: { type: 'plain_text', text: '👁️ Review - PR & design reviews', emoji: true }, value: 'Review' },
+                { text: { type: 'plain_text', text: '🚨 Customer Escalation', emoji: true }, value: 'Customer Escalation' },
+                { text: { type: 'plain_text', text: '📦 Other - Miscellaneous', emoji: true }, value: 'Other' },
               ],
             },
             label: {
               type: 'plain_text',
-              text: 'Category',
+              text: '🏷️ Category',
               emoji: true,
             },
           },
@@ -226,28 +216,28 @@ export class SlackService {
               action_id: 'severity_select',
               placeholder: {
                 type: 'plain_text',
-                text: 'Select severity',
+                text: '⚡ How urgent?',
               },
               options: [
-                {
-                  text: { type: 'plain_text', text: '🟢 Low', emoji: true },
-                  value: 'Low',
-                },
-                {
-                  text: { type: 'plain_text', text: '🟡 Medium', emoji: true },
-                  value: 'Medium',
-                },
-                {
-                  text: { type: 'plain_text', text: '🔴 High', emoji: true },
-                  value: 'High',
-                },
+                { text: { type: 'plain_text', text: '🟢 Low - Can work around it', emoji: true }, value: 'Low' },
+                { text: { type: 'plain_text', text: '🟡 Medium - Slowing me down', emoji: true }, value: 'Medium' },
+                { text: { type: 'plain_text', text: '🔴 High - Completely stuck!', emoji: true }, value: 'High' },
               ],
             },
             label: {
               type: 'plain_text',
-              text: 'Severity',
+              text: '⚡ Severity',
               emoji: true,
             },
+          },
+          {
+            type: 'context',
+            elements: [
+              {
+                type: 'mrkdwn',
+                text: "✨ Your blocker will be tracked in *Momentum* and your manager will be notified. Let's get you unblocked! 💪",
+              },
+            ],
           },
         ],
       },
