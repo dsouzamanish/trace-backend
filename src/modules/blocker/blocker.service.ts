@@ -267,6 +267,7 @@ export class BlockerService {
       Access: 0,
       External: 0,
       Review: 0,
+      'Customer Escalation': 0,
       Other: 0,
     };
 

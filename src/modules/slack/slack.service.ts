@@ -203,6 +203,10 @@ export class SlackService {
                   value: 'Review',
                 },
                 {
+                  text: { type: 'plain_text', text: '🚨 Customer Escalation', emoji: true },
+                  value: 'Customer Escalation',
+                },
+                {
                   text: { type: 'plain_text', text: '📦 Other', emoji: true },
                   value: 'Other',
                 },

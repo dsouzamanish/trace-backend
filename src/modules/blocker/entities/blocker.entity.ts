@@ -11,6 +11,7 @@ export type BlockerCategory =
   | 'Access'
   | 'External'
   | 'Review'
+  | 'Customer Escalation'
   | 'Other';
 export type BlockerSeverity = 'Low' | 'Medium' | 'High';
 export type BlockerStatus = 'Open' | 'Resolved' | 'Ignored';

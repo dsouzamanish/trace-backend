@@ -60,6 +60,7 @@ export const blockerSchema = {
             { value: 'Access' },
             { value: 'External' },
             { value: 'Review' },
+            { value: 'Customer Escalation' },
             { value: 'Other' },
           ],
         },
