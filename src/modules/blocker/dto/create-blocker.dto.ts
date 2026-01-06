@@ -14,10 +14,10 @@ export class CreateBlockerDto {
   description: string;
 
   @ApiProperty({
-    enum: ['Process', 'Technical', 'Dependency', 'Infrastructure', 'Other'],
+    enum: ['Process', 'Technical', 'Dependency', 'Infrastructure', 'Communication', 'Resource', 'Knowledge', 'Access', 'External', 'Review', 'Other'],
     description: 'Category of the blocker',
   })
-  @IsIn(['Process', 'Technical', 'Dependency', 'Infrastructure', 'Other'])
+  @IsIn(['Process', 'Technical', 'Dependency', 'Infrastructure', 'Communication', 'Resource', 'Knowledge', 'Access', 'External', 'Review', 'Other'])
   category: BlockerCategory;
 
   @ApiProperty({

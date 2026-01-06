@@ -1,6 +1,17 @@
 import { TeamMember } from '../../team-member/entities/team-member.entity';
 
-export type BlockerCategory = 'Process' | 'Technical' | 'Dependency' | 'Infrastructure' | 'Other';
+export type BlockerCategory =
+  | 'Process'
+  | 'Technical'
+  | 'Dependency'
+  | 'Infrastructure'
+  | 'Communication'
+  | 'Resource'
+  | 'Knowledge'
+  | 'Access'
+  | 'External'
+  | 'Review'
+  | 'Other';
 export type BlockerSeverity = 'Low' | 'Medium' | 'High';
 export type BlockerStatus = 'Open' | 'Resolved' | 'Ignored';
 

@@ -179,6 +179,30 @@ export class SlackService {
                   value: 'Infrastructure',
                 },
                 {
+                  text: { type: 'plain_text', text: '💬 Communication', emoji: true },
+                  value: 'Communication',
+                },
+                {
+                  text: { type: 'plain_text', text: '👥 Resource', emoji: true },
+                  value: 'Resource',
+                },
+                {
+                  text: { type: 'plain_text', text: '📚 Knowledge', emoji: true },
+                  value: 'Knowledge',
+                },
+                {
+                  text: { type: 'plain_text', text: '🔐 Access', emoji: true },
+                  value: 'Access',
+                },
+                {
+                  text: { type: 'plain_text', text: '🌐 External', emoji: true },
+                  value: 'External',
+                },
+                {
+                  text: { type: 'plain_text', text: '👁️ Review', emoji: true },
+                  value: 'Review',
+                },
+                {
                   text: { type: 'plain_text', text: '📦 Other', emoji: true },
                   value: 'Other',
                 },

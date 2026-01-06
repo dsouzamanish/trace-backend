@@ -261,6 +261,12 @@ export class BlockerService {
       Technical: 0,
       Dependency: 0,
       Infrastructure: 0,
+      Communication: 0,
+      Resource: 0,
+      Knowledge: 0,
+      Access: 0,
+      External: 0,
+      Review: 0,
       Other: 0,
     };
 

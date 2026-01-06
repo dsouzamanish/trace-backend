@@ -10,10 +10,10 @@ export class FilterBlockerDto extends PaginationDto {
   teamMemberUid?: string;
 
   @ApiPropertyOptional({
-    enum: ['Process', 'Technical', 'Dependency', 'Infrastructure', 'Other'],
+    enum: ['Process', 'Technical', 'Dependency', 'Infrastructure', 'Communication', 'Resource', 'Knowledge', 'Access', 'External', 'Review', 'Other'],
   })
   @IsOptional()
-  @IsIn(['Process', 'Technical', 'Dependency', 'Infrastructure', 'Other'])
+  @IsIn(['Process', 'Technical', 'Dependency', 'Infrastructure', 'Communication', 'Resource', 'Knowledge', 'Access', 'External', 'Review', 'Other'])
   category?: BlockerCategory;
 
   @ApiPropertyOptional({ enum: ['Low', 'Medium', 'High'] })
