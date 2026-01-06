@@ -32,9 +32,9 @@ export class AuthController {
     const authResponse = req.user;
     const frontendUrl = this.configService.get<string>('FRONTEND_URL') || 'http://localhost:3000';
 
-    // Redirect to frontend with token
+    // Redirect to frontend with token (using hash router)
     res.redirect(
-      `${frontendUrl}/auth/callback?token=${(authResponse as { accessToken: string }).accessToken}`,
+      `${frontendUrl}/#/auth/callback?token=${(authResponse as { accessToken: string }).accessToken}`,
     );
   }
 
