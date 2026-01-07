@@ -56,6 +56,7 @@ export class TeamMemberService {
     if ('designation' in dto) entry.designation = dto.designation;
     if ('team' in dto) entry.team = dto.team;
     if ('isManager' in dto) entry.is_manager = dto.isManager;
+    if ('joinedDate' in dto && dto.joinedDate) entry.joined_date = dto.joinedDate;
     if ('status' in dto) entry.status = dto.status;
 
     // Set title for Contentstack entry

@@ -1,8 +1,9 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import { Injectable, UnauthorizedException, NotFoundException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { TeamMemberService } from '../team-member/team-member.service';
 import { TeamService } from '../team/team.service';
 import { TeamMember } from '../team-member/entities/team-member.entity';
+import { UpdateProfileDto } from './dto/update-profile.dto';
 
 export interface GoogleUser {
   email: string;
@@ -33,6 +34,7 @@ export interface AuthResponse {
     lastName: string;
     profilePic?: string;
     designation?: string;
+    joinedDate?: string;     // Date user joined the team
     team?: string;           // Deprecated: use teamUid instead
     teamUid?: string;        // Team entry UID
     teamName?: string;       // Team name
@@ -144,6 +146,7 @@ export class AuthService {
         lastName: teamMember.lastName,
         profilePic: teamMember.profilePic,
         designation: teamMember.designation,
+        joinedDate: teamMember.joinedDate,
         team: teamMember.team,   // Deprecated: kept for backward compatibility
         teamUid,                  // Team entry UID (from managed team or team_ref)
         teamName,                 // Team name
@@ -162,6 +165,30 @@ export class AuthService {
 
     // Generate auth response (re-checks Team entries for manager status)
     return await this.generateAuthResponse(teamMember);
+  }
+
+  /**
+   * Update the current user's profile
+   * Returns updated auth response with new JWT token
+   */
+  async updateProfile(userId: string, updateProfileDto: UpdateProfileDto): Promise<AuthResponse> {
+    const teamMember = await this.teamMemberService.findById(userId);
+    
+    if (!teamMember) {
+      throw new NotFoundException('User not found');
+    }
+
+    // Update the team member with allowed profile fields
+    const updatedMember = await this.teamMemberService.update(userId, {
+      ...(updateProfileDto.firstName && { firstName: updateProfileDto.firstName }),
+      ...(updateProfileDto.lastName && { lastName: updateProfileDto.lastName }),
+      ...(updateProfileDto.profilePic && { profilePic: updateProfileDto.profilePic }),
+      ...(updateProfileDto.designation && { designation: updateProfileDto.designation }),
+      ...(updateProfileDto.joinedDate && { joinedDate: updateProfileDto.joinedDate }),
+    });
+
+    // Generate new auth response with updated user data
+    return await this.generateAuthResponse(updatedMember);
   }
 }
 

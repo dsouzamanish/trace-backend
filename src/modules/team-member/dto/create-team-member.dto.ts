@@ -1,4 +1,4 @@
-import { IsString, IsEmail, IsOptional, IsBoolean, IsIn } from 'class-validator';
+import { IsString, IsEmail, IsOptional, IsBoolean, IsIn, IsDateString } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Designation, MemberStatus } from '../entities/team-member.entity';
 
@@ -42,6 +42,11 @@ export class CreateTeamMemberDto {
   @IsOptional()
   @IsBoolean()
   isManager?: boolean;
+
+  @ApiPropertyOptional({ description: 'Date when user joined the team (ISO date string)' })
+  @IsOptional()
+  @IsDateString()
+  joinedDate?: string;
 
   @ApiPropertyOptional({ enum: ['Active', 'Inactive'], default: 'Active' })
   @IsOptional()
