@@ -8,6 +8,7 @@ import {
   Delete,
   UseGuards,
   Query,
+  Header,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth, ApiQuery } from '@nestjs/swagger';
 import { TeamMemberService } from './team-member.service';
@@ -36,6 +37,9 @@ export class TeamMemberController {
   @ApiOperation({ summary: 'Get all team members (Manager/Admin only)' })
   @ApiQuery({ name: 'team', required: false, description: 'Filter by team name' })
   @ApiQuery({ name: 'isManager', required: false, type: Boolean, description: 'Filter by manager status' })
+  @Header('Cache-Control', 'no-cache, no-store, must-revalidate')
+  @Header('Pragma', 'no-cache')
+  @Header('Expires', '0')
   findAll(
     @Query('team') team?: string,
     @Query('isManager') isManager?: boolean,
@@ -45,6 +49,9 @@ export class TeamMemberController {
 
   @Get(':id')
   @ApiOperation({ summary: 'Get a team member by ID' })
+  @Header('Cache-Control', 'no-cache, no-store, must-revalidate')
+  @Header('Pragma', 'no-cache')
+  @Header('Expires', '0')
   findOne(@Param('id') id: string) {
     return this.teamMemberService.findById(id);
   }
@@ -52,6 +59,9 @@ export class TeamMemberController {
   @Get('team/:teamName')
   @Roles(Role.MANAGER)
   @ApiOperation({ summary: 'Get all team members in a specific team' })
+  @Header('Cache-Control', 'no-cache, no-store, must-revalidate')
+  @Header('Pragma', 'no-cache')
+  @Header('Expires', '0')
   findByTeam(@Param('teamName') teamName: string) {
     return this.teamMemberService.findByTeam(teamName);
   }
