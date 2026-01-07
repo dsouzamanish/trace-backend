@@ -102,13 +102,25 @@ export const teamMemberSchema = {
         },
       },
       {
-        display_name: 'Team',
+        display_name: 'Team (Deprecated)',
         uid: 'team',
         data_type: 'text',
         mandatory: false,
         unique: false,
         field_metadata: {
-          description: 'Team name or function (e.g. CMS Core, QA Automation)',
+          description: 'Deprecated: Use team_ref instead. Team name kept for backward compatibility.',
+        },
+      },
+      {
+        display_name: 'Team Reference',
+        uid: 'team_ref',
+        data_type: 'reference',
+        mandatory: false,
+        unique: false,
+        reference_to: ['team'],
+        field_metadata: {
+          description: 'Reference to Team entry - primary way to associate member with team',
+          ref_multiple: false,
         },
       },
       {
