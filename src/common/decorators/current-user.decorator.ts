@@ -7,7 +7,10 @@ export interface CurrentUserData {
   lastName: string;
   isManager: boolean;
   isAdmin?: boolean;
-  team?: string;
+  team?: string;           // Deprecated: use teamUid instead
+  teamUid?: string;        // Team entry UID
+  teamName?: string;       // Team name
+  managedTeams?: string[]; // UIDs of teams managed by this user
 }
 
 export const CurrentUser = createParamDecorator(

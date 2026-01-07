@@ -31,7 +31,10 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       lastName: payload.lastName,
       isManager: payload.isManager,
       isAdmin: payload.isAdmin,
-      team: payload.team,
+      team: payload.team,           // Deprecated: kept for backward compatibility
+      teamUid: payload.teamUid,     // Team entry UID
+      teamName: payload.teamName,   // Team name
+      managedTeams: payload.managedTeams, // UIDs of teams managed by this user
     };
   }
 }
