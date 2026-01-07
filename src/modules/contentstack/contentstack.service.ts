@@ -45,9 +45,11 @@ export class ContentstackService implements OnModuleInit {
     if (this.deliveryStack.setCachePolicy && Contentstack.CachePolicy) {
       this.deliveryStack.setCachePolicy(Contentstack.CachePolicy.NETWORK_ONLY);
     }
-    // Clear any existing cache
+    // Clear any existing cache (requires callback)
     if (this.deliveryStack.clearAll) {
-      this.deliveryStack.clearAll();
+      this.deliveryStack.clearAll(() => {
+        // Cache cleared
+      });
     }
 
     // Initialize Management SDK (for creating/updating data)
