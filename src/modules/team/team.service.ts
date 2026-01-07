@@ -137,6 +137,22 @@ export class TeamService {
   }
 
   /**
+   * Get team by name (title field) with resolved members
+   */
+  async findByName(name: string): Promise<Team | null> {
+    const entries = await this.contentstackService.getEntries<TeamContentstack>(
+      CONTENT_TYPE_UID,
+      {
+        where: { title: name },
+        includeReference: ['manager', 'members'],
+        limit: 1,
+      },
+    );
+
+    return entries.length > 0 ? this.transformEntry(entries[0]) : null;
+  }
+
+  /**
    * Update a team
    */
   async update(uid: string, updateTeamDto: UpdateTeamDto): Promise<Team> {

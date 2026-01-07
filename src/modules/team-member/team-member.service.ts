@@ -1,19 +1,27 @@
-import { Injectable, NotFoundException, ConflictException } from '@nestjs/common';
+import { Injectable, NotFoundException, ConflictException, Inject, forwardRef } from '@nestjs/common';
 import { ContentstackService } from '../contentstack/contentstack.service';
 import { TeamMember, TeamMemberContentstack } from './entities/team-member.entity';
 import { CreateTeamMemberDto } from './dto/create-team-member.dto';
 import { UpdateTeamMemberDto } from './dto/update-team-member.dto';
+import { TeamService } from '../team/team.service';
 
 const CONTENT_TYPE_UID = 'team_member';
 
 @Injectable()
 export class TeamMemberService {
-  constructor(private contentstackService: ContentstackService) {}
+  constructor(
+    private contentstackService: ContentstackService,
+    @Inject(forwardRef(() => TeamService))
+    private teamService: TeamService,
+  ) {}
 
   /**
    * Transform Contentstack entry to TeamMember entity
    */
   private transformEntry(entry: TeamMemberContentstack): TeamMember {
+    // Extract teamUid and teamName from team_ref reference field
+    const teamRef = entry.team_ref?.[0];
+    
     return {
       uid: entry.uid,
       firstName: entry.first_name,
@@ -23,7 +31,9 @@ export class TeamMemberService {
       // Use profile_pic_url (external URL) or fall back to profile_pic file URL
       profilePic: entry.profile_pic_url || entry.profile_pic?.url,
       designation: entry.designation,
-      team: entry.team,
+      team: entry.team,                    // Deprecated: kept for backward compatibility
+      teamUid: teamRef?.uid,               // New: Team entry UID
+      teamName: teamRef?.title || entry.team,  // New: Team name from reference or fallback to old field
       isManager: entry.is_manager,
       joinedDate: entry.joined_date,
       status: entry.status,
@@ -119,13 +129,35 @@ export class TeamMemberService {
     return entry ? this.transformEntry(entry) : null;
   }
 
-  async findByTeam(team: string): Promise<TeamMember[]> {
-    const entries = await this.contentstackService.getEntries<TeamMemberContentstack>(
-      CONTENT_TYPE_UID,
-      { where: { team, status: 'Active' }, limit: 100 },
-    );
+  /**
+   * Find team members by team name (uses Team entry's members reference)
+   * This fetches fresh data from the Team entry, avoiding CDN caching issues
+   */
+  async findByTeam(teamName: string): Promise<TeamMember[]> {
+    // Find the Team entry by name and get resolved members
+    const team = await this.teamService.findByName(teamName);
+    
+    if (!team || !team.members) {
+      return [];
+    }
 
-    return entries.map((entry) => this.transformEntry(entry));
+    // Filter only active members
+    return team.members.filter((member) => member.status === 'Active');
+  }
+
+  /**
+   * Find team members by team UID (uses Team entry's members reference)
+   * Primary method for fetching team members - uses reference resolution
+   */
+  async findByTeamUid(teamUid: string): Promise<TeamMember[]> {
+    const team = await this.teamService.findById(teamUid);
+    
+    if (!team || !team.members) {
+      return [];
+    }
+
+    // Filter only active members
+    return team.members.filter((member) => member.status === 'Active');
   }
 
   async update(uid: string, updateDto: UpdateTeamMemberDto): Promise<TeamMember> {

@@ -10,7 +10,9 @@ export interface TeamMember {
   profilePic?: string;
   profilePicUrl?: string;
   designation?: Designation;
-  team?: string;
+  team?: string;           // Deprecated: use teamUid instead
+  teamUid?: string;        // Reference to Team entry UID
+  teamName?: string;       // Resolved team name (from Team entry)
   isManager?: boolean;
   joinedDate?: string;
   status?: MemberStatus;
@@ -27,7 +29,8 @@ export interface TeamMemberContentstack {
   profile_pic?: { url: string };
   profile_pic_url?: string;
   designation?: Designation;
-  team?: string;
+  team?: string;           // Deprecated string field
+  team_ref?: Array<{ uid: string; _content_type_uid: string; title?: string }>;  // Reference to Team
   is_manager?: boolean;
   joined_date?: string;
   status?: MemberStatus;

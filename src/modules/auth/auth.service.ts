@@ -18,7 +18,9 @@ export interface JwtPayload {
   lastName: string;
   isManager: boolean;
   isAdmin?: boolean;
-  team?: string;
+  team?: string;           // Deprecated: use teamUid instead
+  teamUid?: string;        // Team entry UID
+  teamName?: string;       // Team name
   managedTeams?: string[]; // UIDs of teams managed by this user
 }
 
@@ -31,7 +33,9 @@ export interface AuthResponse {
     lastName: string;
     profilePic?: string;
     designation?: string;
-    team?: string;
+    team?: string;           // Deprecated: use teamUid instead
+    teamUid?: string;        // Team entry UID
+    teamName?: string;       // Team name
     isManager: boolean;
     managedTeams?: string[]; // UIDs of teams managed by this user
   };
@@ -82,13 +86,23 @@ export class AuthService {
     const isManager = managedTeams.length > 0;
     const managedTeamUids = managedTeams.map((t) => t.uid);
 
+    // Find the user's team (first team they belong to as a member)
+    const memberTeams = await this.teamService.findTeamsByMember(teamMember.uid);
+    const primaryTeam = memberTeams[0]; // Use first team as primary
+
+    // Use teamUid/teamName from TeamMember entity if available, otherwise from Team lookup
+    const teamUid = teamMember.teamUid || primaryTeam?.uid;
+    const teamName = teamMember.teamName || primaryTeam?.name || teamMember.team;
+
     const payload: JwtPayload = {
       sub: teamMember.uid,
       email: teamMember.email,
       firstName: teamMember.firstName,
       lastName: teamMember.lastName,
       isManager,
-      team: teamMember.team,
+      team: teamMember.team,     // Deprecated: kept for backward compatibility
+      teamUid,                    // New: Team entry UID
+      teamName,                   // New: Team name
       managedTeams: managedTeamUids,
     };
 
@@ -101,7 +115,9 @@ export class AuthService {
         lastName: teamMember.lastName,
         profilePic: teamMember.profilePic,
         designation: teamMember.designation,
-        team: teamMember.team,
+        team: teamMember.team,   // Deprecated: kept for backward compatibility
+        teamUid,                  // New: Team entry UID
+        teamName,                 // New: Team name
         isManager,
         managedTeams: managedTeamUids,
       },

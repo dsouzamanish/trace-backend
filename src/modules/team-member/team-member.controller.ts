@@ -47,6 +47,26 @@ export class TeamMemberController {
     return this.teamMemberService.findAll({ team, isManager });
   }
 
+  @Get('by-team-uid/:teamUid')
+  @Roles(Role.MANAGER)
+  @ApiOperation({ summary: 'Get all team members by team UID (recommended - uses Team reference)' })
+  @Header('Cache-Control', 'no-cache, no-store, must-revalidate')
+  @Header('Pragma', 'no-cache')
+  @Header('Expires', '0')
+  findByTeamUid(@Param('teamUid') teamUid: string) {
+    return this.teamMemberService.findByTeamUid(teamUid);
+  }
+
+  @Get('team/:teamName')
+  @Roles(Role.MANAGER)
+  @ApiOperation({ summary: 'Get all team members by team name (uses Team reference)' })
+  @Header('Cache-Control', 'no-cache, no-store, must-revalidate')
+  @Header('Pragma', 'no-cache')
+  @Header('Expires', '0')
+  findByTeam(@Param('teamName') teamName: string) {
+    return this.teamMemberService.findByTeam(teamName);
+  }
+
   @Get(':id')
   @ApiOperation({ summary: 'Get a team member by ID' })
   @Header('Cache-Control', 'no-cache, no-store, must-revalidate')
@@ -54,16 +74,6 @@ export class TeamMemberController {
   @Header('Expires', '0')
   findOne(@Param('id') id: string) {
     return this.teamMemberService.findById(id);
-  }
-
-  @Get('team/:teamName')
-  @Roles(Role.MANAGER)
-  @ApiOperation({ summary: 'Get all team members in a specific team' })
-  @Header('Cache-Control', 'no-cache, no-store, must-revalidate')
-  @Header('Pragma', 'no-cache')
-  @Header('Expires', '0')
-  findByTeam(@Param('teamName') teamName: string) {
-    return this.teamMemberService.findByTeam(teamName);
   }
 
   @Patch(':id')
