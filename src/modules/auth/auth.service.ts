@@ -79,20 +79,49 @@ export class AuthService {
   /**
    * Generate auth response with manager status derived from Team entries
    * A user is considered a manager if they are set as the manager in any Team entry
+   * 
+   * Priority for determining user's primary team:
+   * 1. If user is a manager → use the first team they manage
+   * 2. If user has team_ref set → use that team
+   * 3. Otherwise → use the first team they belong to as a member
    */
   async generateAuthResponse(teamMember: TeamMember): Promise<AuthResponse> {
-    // Check if user is a manager of any team by looking at Team entries
+    // Check if user is a manager of any team by looking at Team entries (via manager field)
     const managedTeams = await this.teamService.findTeamsManagedBy(teamMember.uid);
     const isManager = managedTeams.length > 0;
     const managedTeamUids = managedTeams.map((t) => t.uid);
 
-    // Find the user's team (first team they belong to as a member)
-    const memberTeams = await this.teamService.findTeamsByMember(teamMember.uid);
-    const primaryTeam = memberTeams[0]; // Use first team as primary
+    // Determine primary team based on priority:
+    // 1. For managers: use the first team they manage
+    // 2. For non-managers: use team_ref from TeamMember, or first team they belong to
+    let teamUid: string | undefined;
+    let teamName: string | undefined;
 
-    // Use teamUid/teamName from TeamMember entity if available, otherwise from Team lookup
-    const teamUid = teamMember.teamUid || primaryTeam?.uid;
-    const teamName = teamMember.teamName || primaryTeam?.name || teamMember.team;
+    if (isManager && managedTeams.length > 0) {
+      // Manager's primary team is the team they manage
+      const primaryManagedTeam = managedTeams[0];
+      teamUid = primaryManagedTeam.uid;
+      teamName = primaryManagedTeam.name;
+    } else {
+      // Non-manager: use team_ref from TeamMember entity
+      teamUid = teamMember.teamUid;
+      teamName = teamMember.teamName;
+
+      // Fallback: find teams where user is a member
+      if (!teamUid) {
+        const memberTeams = await this.teamService.findTeamsByMember(teamMember.uid);
+        const primaryTeam = memberTeams[0];
+        if (primaryTeam) {
+          teamUid = primaryTeam.uid;
+          teamName = primaryTeam.name;
+        }
+      }
+    }
+
+    // Final fallback to deprecated team field
+    if (!teamName) {
+      teamName = teamMember.team;
+    }
 
     const payload: JwtPayload = {
       sub: teamMember.uid,
@@ -101,8 +130,8 @@ export class AuthService {
       lastName: teamMember.lastName,
       isManager,
       team: teamMember.team,     // Deprecated: kept for backward compatibility
-      teamUid,                    // New: Team entry UID
-      teamName,                   // New: Team name
+      teamUid,                    // Team entry UID (from managed team or team_ref)
+      teamName,                   // Team name
       managedTeams: managedTeamUids,
     };
 
@@ -116,8 +145,8 @@ export class AuthService {
         profilePic: teamMember.profilePic,
         designation: teamMember.designation,
         team: teamMember.team,   // Deprecated: kept for backward compatibility
-        teamUid,                  // New: Team entry UID
-        teamName,                 // New: Team name
+        teamUid,                  // Team entry UID (from managed team or team_ref)
+        teamName,                 // Team name
         isManager,
         managedTeams: managedTeamUids,
       },
