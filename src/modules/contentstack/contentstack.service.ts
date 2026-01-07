@@ -41,6 +41,15 @@ export class ContentstackService implements OnModuleInit {
       region: this.getRegion(region),
     });
 
+    // Disable SDK caching - always fetch fresh data from network
+    if (this.deliveryStack.setCachePolicy && Contentstack.CachePolicy) {
+      this.deliveryStack.setCachePolicy(Contentstack.CachePolicy.NETWORK_ONLY);
+    }
+    // Clear any existing cache
+    if (this.deliveryStack.clearAll) {
+      this.deliveryStack.clearAll();
+    }
+
     // Initialize Management SDK (for creating/updating data)
     const managementClient = contentstack.client({
       authtoken: managementToken,
