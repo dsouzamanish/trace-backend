@@ -94,7 +94,7 @@ export class TeamMemberService {
 
     const entries = await this.contentstackService.getEntries<TeamMemberContentstack>(
       CONTENT_TYPE_UID,
-      { where, limit: 100 },
+      { where, includeReference: ['team_ref'], limit: 100 },
     );
 
     return entries.map((entry) => this.transformEntry(entry));
@@ -104,29 +104,38 @@ export class TeamMemberService {
     const entry = await this.contentstackService.getEntryByUid<TeamMemberContentstack>(
       CONTENT_TYPE_UID,
       uid,
+      ['team_ref'],  // Resolve team_ref reference to get teamUid and teamName
     );
 
     return entry ? this.transformEntry(entry) : null;
   }
 
   async findByEmail(email: string): Promise<TeamMember | null> {
-    const entry = await this.contentstackService.findEntryByField<TeamMemberContentstack>(
+    // Use getEntries with includeReference to resolve team_ref
+    const entries = await this.contentstackService.getEntries<TeamMemberContentstack>(
       CONTENT_TYPE_UID,
-      'email',
-      email,
+      { 
+        where: { email },
+        includeReference: ['team_ref'],
+        limit: 1,
+      },
     );
 
-    return entry ? this.transformEntry(entry) : null;
+    return entries.length > 0 ? this.transformEntry(entries[0]) : null;
   }
 
   async findBySlackId(slackId: string): Promise<TeamMember | null> {
-    const entry = await this.contentstackService.findEntryByField<TeamMemberContentstack>(
+    // Use getEntries with includeReference to resolve team_ref
+    const entries = await this.contentstackService.getEntries<TeamMemberContentstack>(
       CONTENT_TYPE_UID,
-      'slack_id',
-      slackId,
+      { 
+        where: { slack_id: slackId },
+        includeReference: ['team_ref'],
+        limit: 1,
+      },
     );
 
-    return entry ? this.transformEntry(entry) : null;
+    return entries.length > 0 ? this.transformEntry(entries[0]) : null;
   }
 
   /**
