@@ -7,23 +7,68 @@ import { TeamMember } from '../team-member/entities/team-member.entity';
 
 const CONTENT_TYPE_UID = 'team';
 
+// Type for Contentstack resolved member reference (snake_case fields)
+interface ContentstackMemberRef {
+  uid: string;
+  _content_type_uid?: string;
+  first_name?: string;
+  last_name?: string;
+  email?: string;
+  slack_id?: string;
+  profile_pic?: { url: string };
+  profile_pic_url?: string;
+  designation?: string;
+  team?: string;
+  is_manager?: boolean;
+  joined_date?: string;
+  status?: string;
+}
+
 @Injectable()
 export class TeamService {
   constructor(private contentstackService: ContentstackService) {}
 
   /**
+   * Transform Contentstack member reference to TeamMember entity
+   */
+  private transformMemberRef(memberRef: ContentstackMemberRef): TeamMember {
+    return {
+      uid: memberRef.uid,
+      firstName: memberRef.first_name || '',
+      lastName: memberRef.last_name || '',
+      email: memberRef.email || '',
+      slackId: memberRef.slack_id,
+      profilePic: memberRef.profile_pic_url || memberRef.profile_pic?.url,
+      designation: memberRef.designation as TeamMember['designation'],
+      team: memberRef.team,
+      isManager: memberRef.is_manager,
+      joinedDate: memberRef.joined_date,
+      status: memberRef.status as TeamMember['status'],
+    };
+  }
+
+  /**
    * Transform Contentstack entry to Team entity
    */
   private transformEntry(entry: TeamContentstack): Team {
+    // Transform manager reference
+    const managerRef = entry.manager?.[0] as ContentstackMemberRef | undefined;
+    const manager = managerRef ? this.transformMemberRef(managerRef) : undefined;
+
+    // Transform members references
+    const members = entry.members?.map((m) => 
+      this.transformMemberRef(m as ContentstackMemberRef)
+    );
+
     return {
       uid: entry.uid,
       name: entry.title,
       teamId: entry.team_id,
       description: entry.description,
-      managerUid: entry.manager?.[0]?.uid,
-      manager: entry.manager?.[0] as TeamMember | undefined,
+      managerUid: managerRef?.uid,
+      manager,
       memberUids: entry.members?.map((m) => m.uid) || [],
-      members: entry.members as TeamMember[] | undefined,
+      members,
       status: entry.status,
       createdAt: entry.created_at,
       updatedAt: entry.updated_at,
